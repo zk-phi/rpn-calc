@@ -128,6 +128,7 @@ active."
     (define-key kmap (kbd "DEL") 'rpn-calc-backspace)
     kmap))
 
+;;;###autoload
 (define-minor-mode rpn-calc
   "quick RPN calculator for hackers"
   :init-value nil
