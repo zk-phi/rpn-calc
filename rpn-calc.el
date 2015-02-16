@@ -232,3 +232,9 @@ active."
     (if (zerop (buffer-size))
         (pop rpn-calc--stack)
       (backward-delete-char 1))))
+
+;; + provide
+
+(provide 'rpn-calc)
+
+;;; rpn-calc.el ends here
