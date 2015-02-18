@@ -33,6 +33,26 @@ and invoke with =M-x rpn-calc=.
    =10[SPC]20[SPC]30[SPC]'list[SPC]=). This behavior can be changed by
    setting =rpn-calc-apply-rest-args=.
 
+** Built-in Operators
+
+- math
+  - + :: pop =y=, =x= and push =(+ x y)=
+  - -- :: pop =y=, =x= and push =(- x y)=
+  - / :: pop =y=, =x= and push =(/ x y)=
+  - * :: pop =y=, =x= and push =(* x y)=
+  - % :: pop =y=, =x= and push =(mod x y)=
+  - sin :: pop =x= and push =(sin x)=
+  - cos :: pop =x= and push =(cos x)=
+  - tan :: pop =x= and push =(tan x)=
+
+- bitwise
+  - << :: pop =y=, =x= and push =(ash x y)= (shift left)
+  - >> :: pop =y=, =x= and push =(ash x (- y))= (shift right)
+
+- other
+  - : :: pop =x=, and push =x= twice (duplicate)
+  - \\ :: pop =x=, =y= and push =y=, =x= (swap)
+
 ** Other Features
 
 - auto-committing
@@ -40,7 +60,7 @@ and invoke with =M-x rpn-calc=.
   If there seems no ambiguity, rpn-calc automatically commits the
   input after entering :
 
-  - a number followed by non-digit character ::
+  - non-digit character after a number ::
 
     =1'1+[SPC]= is equivalent to =1[SPC]'1+[SPC]=.
 
@@ -56,3 +76,8 @@ and invoke with =M-x rpn-calc=.
 
   When you push some numbers, their binary representation is
   displayed.
+
+- function quote
+
+  You can quote function (tell rpn-calc not to call it) with function
+  quote (=#'​=).
