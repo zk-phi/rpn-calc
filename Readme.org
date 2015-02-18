@@ -65,6 +65,10 @@ and invoke with =M-x rpn-calc=.
   - tan :: pop =x= and push =(tan x)=
 
 - bitwise
+  - & :: pop =y=, =x= and push =(logand x y)= (bitwise and)
+  - | :: pop =y=, =x= and push =(logor x y)= (bitwise or)
+  - ^ :: pop =y=, =x= and push =(logxor x y)= (bitwise xor)
+  - ~ :: pop =x= and push =(lognot x)= (bitwise not)
   - << :: pop =y=, =x= and push =(ash x y)= (shift left)
   - >> :: pop =y=, =x= and push =(ash x (- y))= (shift right)
 

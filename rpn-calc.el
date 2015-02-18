@@ -29,7 +29,7 @@
 ;;; Code:
 
 (require 'popup)
-(require 'help-fns)
+(require 'help-fns)                     ; help-function-arglist
 
 (defgroup rpn-calc nil
   "quick RPN calculator for hackers"
@@ -38,12 +38,17 @@
 ;; + custom
 
 (defcustom rpn-calc-operator-table
-  '(("+" 2 . +)
-    ("--" 2 . -)                      ; "10 -10" should be "10 (- 10)"
-    ("/" 2 . /)
-    ("*" 2 . *)
-    ("<<" 2 . ash)
-    (">>" 2 . (lambda (a b) (ash a (- b))))
+  '(("+"   2 . +)
+    ("--"  2 . -)                      ; "10 -10" should be "10 (- 10)"
+    ("/"   2 . /)
+    ("*"   2 . *)
+    ("%"   2 . mod)
+    ("&" 2 . logand)
+    ("|" 2 . logor)
+    ("^" 2 . logxor)
+    ("~" 1 . lognot)
+    ("<<"  2 . ash)
+    (">>"  2 . (lambda (a b) (ash a (- b))))
     ("sin" 1 . sin)
     ("cos" 1 . cos)
     ("tan" 1 . tan))
@@ -138,10 +143,11 @@ active."
 ;; + core
 
 ;; *TODO* operator table should be a (patricia)-trie
-;; *TODO* how to apply higher-order functions ?
+;; *TODO* display ASCII char ?
 
 (defvar rpn-calc--saved-minor-modes nil)
-(defvar rpn-calc--temp-buf nil)
+(defvar rpn-calc--temp-buffer nil)
+(defvar rpn-calc--buffer nil)
 (defvar rpn-calc--stack nil)
 (defvar rpn-calc--popup nil)
 
@@ -160,7 +166,8 @@ active."
   :keymap rpn-calc-map
   (cond (rpn-calc
          (setq rpn-calc--stack    nil
-               rpn-calc--temp-buf (get-buffer-create " *rpn-calc*")
+               rpn-calc--buffer (current-buffer)
+               rpn-calc--temp-buffer (get-buffer-create " *rpn-calc*")
                rpn-calc--saved-minor-modes
                (mapcar (lambda (mode) (when mode (prog1 mode (funcall mode -1))))
                        rpn-calc-incompatible-minor-modes)
@@ -174,7 +181,7 @@ active."
          (remove-hook 'pre-command-hook 'rpn-calc--pre-command-hook)
          (popup-delete rpn-calc--popup)
          (mapc 'funcall rpn-calc-incompatible-minor-modes)
-         (kill-buffer rpn-calc--temp-buf))))
+         (kill-buffer rpn-calc--temp-buffer))))
 
 (defun rpn-calc--pre-command-hook ()
   (unless (and (symbolp this-command)
@@ -197,34 +204,45 @@ active."
         (setcdr last-cell nil)))))
 
 (defun rpn-calc--push (obj)
-  (cond ((functionp obj)
-         (let* ((arity (rpn-calc--function-arity obj))
-                (args (nreverse (rpn-calc--take (nth 0 arity))))
-                (optional-args (if rpn-calc-apply-optional-args
-                                   (nreverse (rpn-calc--take (nth 1 arity)))
-                                 (make-list (nth 1 arity) nil)))
-                (rest-args (when (and rpn-calc-apply-rest-args (nth 2 arity))
-                             (prog1 (nreverse rpn-calc--stack)
-                               (setq rpn-calc--stack nil)))))
-           (push (apply obj (nconc args optional-args rest-args)) rpn-calc--stack)))
-        ((and (consp obj) (integerp (car obj)) (functionp (cdr obj)))
-         (push (apply (cdr obj) (nreverse (rpn-calc--take (car obj)))) rpn-calc--stack))
-        (t
-         (push obj rpn-calc--stack))))
+  (with-current-buffer rpn-calc--buffer
+    (cond ((and (consp obj) (eq (car obj) 'function)) ; quoted function
+           (push (eval obj) rpn-calc--stack))
+          ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
+           (push (apply (cdr obj) (nreverse (rpn-calc--take (car obj)))) rpn-calc--stack))
+          (t                            ; other
+           (setq obj (eval obj))
+           (if (not (functionp obj))
+               (push obj rpn-calc--stack)
+             (let* ((arity (rpn-calc--function-arity obj))
+                    (args (nreverse (rpn-calc--take (nth 0 arity))))
+                    (optional-args (if rpn-calc-apply-optional-args
+                                       (nreverse (rpn-calc--take (nth 1 arity)))
+                                     (make-list (nth 1 arity) nil)))
+                    (rest-args (when (and rpn-calc-apply-rest-args (nth 2 arity))
+                                 (prog1 (nreverse rpn-calc--stack)
+                                   (setq rpn-calc--stack nil)))))
+               (push (apply obj (nconc args optional-args rest-args)) rpn-calc--stack)))))))
 
 (defun rpn-calc--maybe-commit-current-input ()
-  (let ((buf (current-buffer)))
-    (with-current-buffer rpn-calc--temp-buf
-      (let* ((obj  (ignore-errors (read (buffer-string))))
+  (with-current-buffer rpn-calc--temp-buffer
+    (ignore-errors                      ; do nothing on read-error
+      (let* ((obj  (read (buffer-string)))
              (name (when (symbolp obj) (symbol-name obj))))
-        (cond ((null obj)             ; input is unreadable yet -> fail
-               nil)
-              ((memql (char-before) '(?\s ?\t ?\n ?\) ?\] ?\} ?\")) ; complete input
+        (cond ((eq obj ':)              ; command: duplicate
                (erase-buffer)
-               (let ((op (when (symbolp obj)
-                           (assoc (symbol-name obj) rpn-calc-operator-table))))
-                 (with-current-buffer buf
-                   (rpn-calc--push (or op (eval obj))))))
+               (push (car rpn-calc--stack) rpn-calc--stack))
+              ((eq obj '\\)             ; command: swap
+               (erase-buffer)
+               (if (cdr rpn-calc--stack)
+                   (let ((tmp (car rpn-calc--stack)))
+                     (setcar rpn-calc--stack (cadr rpn-calc--stack))
+                     (setcar (cdr rpn-calc--stack) tmp))
+                 (error "stack underflow")))
+              ((looking-back "\\(^\\|[^\\]\\)[])}\"\s\t\n]") ; complete input
+               (erase-buffer)
+               (rpn-calc--push (or (when (symbolp obj)
+                                     (assoc (symbol-name obj) rpn-calc-operator-table))
+                                   obj)))
               ((null name)               ; obj is not a symbol -> fail
                nil)
               ((string-match             ; a number + incomplete symbol
@@ -233,10 +251,9 @@ active."
                (let ((num (read (match-string 0 name))))
                  (erase-buffer)
                  (insert (substring name (match-end 0)))
-                 (with-current-buffer buf
-                   (rpn-calc--push num)
-                   ;; recurse
-                   (rpn-calc--maybe-commit-current-input))))
+                 (rpn-calc--push num)
+                 ;; recurse
+                 (rpn-calc--maybe-commit-current-input)))
               ((setq obj (let (val)      ; a complete operator
                            (catch 'ret
                              (dolist (entry rpn-calc-operator-table)
@@ -246,11 +263,10 @@ active."
                                    (setq val (cdr entry)))))
                              val)))
                (erase-buffer)
-               (with-current-buffer buf
-                 (rpn-calc--push obj))))))))
+               (rpn-calc--push obj)))))))
 
 (defun rpn-calc--refresh-popup ()
-  (with-current-buffer rpn-calc--temp-buf
+  (with-current-buffer rpn-calc--temp-buffer
     (let ((head (concat (buffer-string)
                         (rpn-calc--annotation (ignore-errors (read (buffer-string))))))
           (stack (mapcar (lambda (item)
@@ -270,13 +286,13 @@ active."
 
 (defun rpn-calc-self-insert (ch)
   (interactive (list last-input-event))
-  (with-current-buffer rpn-calc--temp-buf
+  (with-current-buffer rpn-calc--temp-buffer
     (goto-char (point-max))
     (insert ch)))
 
 (defun rpn-calc-backspace ()
   (interactive)
-  (with-current-buffer rpn-calc--temp-buf
+  (with-current-buffer rpn-calc--temp-buffer
     (if (zerop (buffer-size))
         (pop rpn-calc--stack)
       (backward-delete-char 1))))
