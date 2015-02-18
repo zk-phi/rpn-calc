@@ -18,20 +18,18 @@
 
 ;; Author: zk_phi
 ;; URL: http://hins11.yu-yake.com/
-;; Version: 1.0.0beta
 ;; Package-Requires: ((popup "0.4"))
 
 ;;; Commentary:
 
-;; Try: "M-x rpn-calc[RET] 1 2+3/sin"
+;; Try: "M-x rpn-calc[RET] 1[SPC]2+3/sin'number-to-string[SPC]"
 
 ;;; Change Log:
 
 ;;; Code:
 
 (require 'popup)
-
-(defconst rpn-calc-version "1.0.0beta")
+(require 'help-fns)
 
 (defgroup rpn-calc nil
   "quick RPN calculator for hackers"
@@ -56,6 +54,16 @@
   '(phi-autopair-mode key-combo-mode)
   "list of minor-modes that should be disabled while RPN calc is
 active."
+  :group 'rpn-calc)
+
+(defcustom rpn-calc-apply-optional-args nil
+  "when non-nil, optional arguments are applied to pushed
+  functions."
+  :group 'rpn-calc)
+
+(defcustom rpn-calc-apply-rest-args t
+  "when non-nil, rest arguments are applied to pushed
+  functions."
   :group 'rpn-calc)
 
 ;; + utils
@@ -112,10 +120,25 @@ active."
         (string-match "^0*\\(0\\|[^0].*\\)$" str)
         (match-string 1 str)))))
 
+(defun rpn-calc--function-arity (fn)
+  "return (ARITY OPTIONAL-ARITY ACCEPT-REST-ARGS) of FN."
+  (let ((arglist (help-function-arglist fn))
+        (arity 0)
+        (optional-arity 0))
+    (while (and arglist (not (memq (car arglist) '(&optional &rest))))
+      (setq arity   (1+ arity)
+            arglist (cdr arglist)))
+    (when (eq (car arglist) '&optional)
+      (setq arglist (cdr arglist))
+      (while (and arglist (not (eq (car arglist) '&rest)))
+        (setq optional-arity (1+ optional-arity)
+              arglist        (cdr arglist))))
+    (list arity optional-arity (eq (car arglist) '&rest))))
+
 ;; + core
 
 ;; *TODO* operator table should be a (patricia)-trie
-;; *TODO* maybe apply function if inserted object is a function ?
+;; *TODO* how to apply higher-order functions ?
 
 (defvar rpn-calc--saved-minor-modes nil)
 (defvar rpn-calc--temp-buf nil)
@@ -124,8 +147,10 @@ active."
 
 (defconst rpn-calc-map
   (let ((kmap (make-sparse-keymap)))
-    (define-key kmap [remap self-insert-command] 'rpn-calc-self-insert)
-    (define-key kmap (kbd "DEL") 'rpn-calc-backspace)
+    (define-key kmap [remap self-insert-command]   'rpn-calc-self-insert)
+    (define-key kmap [remap delete-backward-char]  'rpn-calc-backspace)
+    (define-key kmap [remap backward-delete-char]  'rpn-calc-backspace)
+    (define-key kmap (kbd "DEL")                   'rpn-calc-backspace)
     kmap))
 
 ;;;###autoload
@@ -162,52 +187,75 @@ active."
     (error (message (error-message-string err))))
   (rpn-calc--refresh-popup))
 
+(defun rpn-calc--take (n)
+  "take first N elements from the stack."
+  (when (> n 0)
+    (let* ((last-cell (nthcdr (1- n) rpn-calc--stack)))
+      (unless last-cell (error "stack underflow"))
+      (prog1 rpn-calc--stack
+        (setq rpn-calc--stack (cdr last-cell))
+        (setcdr last-cell nil)))))
+
+(defun rpn-calc--push (obj)
+  (cond ((functionp obj)
+         (let* ((arity (rpn-calc--function-arity obj))
+                (args (nreverse (rpn-calc--take (nth 0 arity))))
+                (optional-args (if rpn-calc-apply-optional-args
+                                   (nreverse (rpn-calc--take (nth 1 arity)))
+                                 (make-list (nth 1 arity) nil)))
+                (rest-args (when (and rpn-calc-apply-rest-args (nth 2 arity))
+                             (prog1 (nreverse rpn-calc--stack)
+                               (setq rpn-calc--stack nil)))))
+           (push (apply obj (nconc args optional-args rest-args)) rpn-calc--stack)))
+        ((and (consp obj) (integerp (car obj)) (functionp (cdr obj)))
+         (push (apply (cdr obj) (nreverse (rpn-calc--take (car obj)))) rpn-calc--stack))
+        (t
+         (push obj rpn-calc--stack))))
+
 (defun rpn-calc--maybe-commit-current-input ()
-  (with-current-buffer rpn-calc--temp-buf
-    (let* ((obj (ignore-errors (read (buffer-string))))
-           (name (when (symbolp obj) (symbol-name obj))))
-      (cond ((null obj)              ; input is unreadable yet -> fail
-             nil)
-            ((or (and (consp obj) (= (char-after 1) ?\()) ; a complete list
-                 (vectorp obj)          ; a complete vector
-                 (memql (char-before) '(?\s ?\t ?\n))) ; other complete input
-             (erase-buffer)
-             (push (eval obj) rpn-calc--stack))
-            ((null name)                ; obj is not a symbol -> fail
-             nil)
-            ((string-match              ; a number
-              "^[+-]?[0-9]*\\(?:[0-9]\\|\\.[0-9]+\\)\\(?:e[+-]?\\(?:[0-9]+\\|INF\\)\\)?"
-              name)
-             (push (read (match-string 0 name)) rpn-calc--stack)
-             (erase-buffer)
-             (insert (substring name (match-end 0)))
-             (rpn-calc--maybe-commit-current-input))
-            ((setq obj (let (val)       ; an operator
-                         (catch 'ret
-                           (dolist (entry rpn-calc-operator-table)
-                             (when (string-prefix-p name (car entry))
-                               (if (not (string= name (car entry)))
-                                   (throw 'ret nil)
-                                 (setq val (cdr entry)))))
-                           val)))
-             (erase-buffer)
-             (if (zerop (car obj))
-                 (push (funcall (cdr obj)) rpn-calc--stack)
-               (let* ((last-cell (nthcdr (1- (car obj)) rpn-calc--stack))
-                      (args rpn-calc--stack))
-                 (unless last-cell
-                   (error "too few arguments for the operator"))
-                 (setq rpn-calc--stack (cdr last-cell))
-                 (setcdr last-cell nil)
-                 (push (apply (cdr obj) (nreverse args)) rpn-calc--stack))))))))
+  (let ((buf (current-buffer)))
+    (with-current-buffer rpn-calc--temp-buf
+      (let* ((obj  (ignore-errors (read (buffer-string))))
+             (name (when (symbolp obj) (symbol-name obj))))
+        (cond ((null obj)             ; input is unreadable yet -> fail
+               nil)
+              ((memql (char-before) '(?\s ?\t ?\n ?\) ?\] ?\} ?\")) ; complete input
+               (erase-buffer)
+               (let ((op (when (symbolp obj)
+                           (assoc (symbol-name obj) rpn-calc-operator-table))))
+                 (with-current-buffer buf
+                   (rpn-calc--push (or op (eval obj))))))
+              ((null name)               ; obj is not a symbol -> fail
+               nil)
+              ((string-match             ; a number + incomplete symbol
+                "^[+-]?[0-9]*\\(?:[0-9]\\|\\.[0-9]+\\)\\(?:e[+-]?\\(?:[0-9]+\\|INF\\)\\)?"
+                name)
+               (let ((num (read (match-string 0 name))))
+                 (erase-buffer)
+                 (insert (substring name (match-end 0)))
+                 (with-current-buffer buf
+                   (rpn-calc--push num)
+                   ;; recurse
+                   (rpn-calc--maybe-commit-current-input))))
+              ((setq obj (let (val)      ; a complete operator
+                           (catch 'ret
+                             (dolist (entry rpn-calc-operator-table)
+                               (when (string-prefix-p name (car entry))
+                                 (if (not (string= name (car entry)))
+                                     (throw 'ret nil)
+                                   (setq val (cdr entry)))))
+                             val)))
+               (erase-buffer)
+               (with-current-buffer buf
+                 (rpn-calc--push obj))))))))
 
 (defun rpn-calc--refresh-popup ()
   (with-current-buffer rpn-calc--temp-buf
-    (let* ((num (ignore-errors (read (buffer-string))))
-           (head (concat (buffer-string) (rpn-calc--annotation num)))
-           (stack (mapcar (lambda (item)
-                            (concat (prin1-to-string item) (rpn-calc--annotation item)))
-                          rpn-calc--stack)))
+    (let ((head (concat (buffer-string)
+                        (rpn-calc--annotation (ignore-errors (read (buffer-string))))))
+          (stack (mapcar (lambda (item)
+                           (concat (prin1-to-string item) (rpn-calc--annotation item)))
+                         rpn-calc--stack)))
       (popup-set-list rpn-calc--popup (cons head stack))
       (popup-draw rpn-calc--popup))))
 
