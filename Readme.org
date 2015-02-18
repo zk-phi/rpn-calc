@@ -8,6 +8,25 @@ quick RPN calculator for hackers
 
 [[img/screencast.gif]]
 
+** Advantages
+
+=rpn-calc= is designed to be a handy tool for daily programming
+use. For example,
+
+- =rpn-calc= uses popup instead of making a new window, and you don't
+  need to move your eyes between the edit point and calc window.
+
+- =rpn-calc= displays binary representation of numbers automatically,
+  which may be useful for programmers.
+
+- =rpn-calc= is easier to customize. You can add/remove some
+  operators with just one or two lines of Emacs Lisp.
+
+- You can push not only numbers but any Emacs Lisp objects to the
+  stack, and you can apply any Lisp function to them. So =rpn-calc=
+  can also be used as an interactive, RPN version of
+  =eval-expression=.
+
 ** Installation
 
 Require this script
