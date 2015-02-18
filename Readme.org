@@ -51,7 +51,7 @@ and invoke with =M-x rpn-calc=.
 
 - other
   - : :: pop =x=, and push =x= twice (duplicate)
-  - \\ :: pop =x=, =y= and push =y=, =x= (swap)
+  - \ :: pop =x=, =y= and push =y=, =x= (swap)
 
 ** Other Features
 
@@ -81,3 +81,7 @@ and invoke with =M-x rpn-calc=.
 
   You can quote function (tell rpn-calc not to call it) with function
   quote (=#'​=).
+
+** Dependencies
+
+- popup.el
