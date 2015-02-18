@@ -1,0 +1,58 @@
+* rpn-calc.el
+
+プログラマ向け RPN 電卓
+
+quick RPN calculator for hackers
+
+** Screencast
+
+[[img/screencast.gif]]
+
+** Installation
+
+Require this script
+
+: (require 'rpn-calc)
+
+and invoke with =M-x rpn-calc=.
+
+** Tutorial
+
+1. You can push objects by pressing =[SPC]= after entering an
+   S-expression (try: =120[SPC]=). You can also enter more complex
+   S-expressisons like =(1+ (point))=.
+
+2. When you enter an operator name, top elements in the stack are
+   popped and applied to the operator (try: =1[SPC]sin=). List of
+   built-in operators are listed below. You can add some operators by
+   setting variable =rpn-calc-operator-table=.
+
+3. You can also enter a function symbol to call it (try:
+   =10[SPC]'number-to-string[SPC]=). If the function accepts =&rest=
+   arguments, all elements in the stack are passed (try:
+   =10[SPC]20[SPC]30[SPC]'list[SPC]=). This behavior can be changed by
+   setting =rpn-calc-apply-rest-args=.
+
+** Other Features
+
+- auto-committing
+
+  If there seems no ambiguity, rpn-calc automatically commits the
+  input after entering :
+
+  - a number followed by non-digit character ::
+
+    =1'1+[SPC]= is equivalent to =1[SPC]'1+[SPC]=.
+
+  - outer-most closing paren ::
+
+    =(1+ (point))[SPC]= is equivalent to =(1+ (point))=.
+
+  - complete operator name ::
+
+    =1sin= is equivalent to =1sin[SPC]=.
+
+- display binary representation of numbers
+
+  When you push some numbers, their binary representation is
+  displayed.
