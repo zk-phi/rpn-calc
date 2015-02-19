@@ -284,7 +284,10 @@ active."
     (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
    ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
     (let ((args (rpn-calc--function-args (cadr item))))
-      (concat " " (prin1-to-string (nconc (car args) (cddr args))))))))
+      (concat " " (prin1-to-string
+                   (nconc (car args)
+                          (when rpn-calc-apply-optional-args (cadr args))
+                          (when rpn-calc-apply-rest-args (cddr args)))))))))
 
 ;; + commands
 
