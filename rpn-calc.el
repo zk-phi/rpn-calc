@@ -213,7 +213,7 @@ active."
            (push (eval obj) rpn-calc--stack))
           ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
            (push (apply (cdr obj) (nreverse (rpn-calc--take (car obj)))) rpn-calc--stack))
-          (t                            ; other
+          (t                           ; other
            (setq obj (eval obj))
            (if (not (functionp obj))
                (push obj rpn-calc--stack)
@@ -229,13 +229,15 @@ active."
 
 (defun rpn-calc--maybe-commit-current-input ()
   (with-current-buffer rpn-calc--temp-buffer
-    (ignore-errors                      ; do nothing on read-error
-      (let* ((obj  (read (buffer-string)))
+    (catch 'read-error
+      (let* ((obj  (condition-case nil
+                       (read (buffer-string))
+                     (error (throw 'read-error nil))))
              (name (when (symbolp obj) (symbol-name obj))))
-        (cond ((eq obj ':)              ; command: duplicate
+        (cond ((eq obj ':)             ; command: duplicate
                (erase-buffer)
                (push (car rpn-calc--stack) rpn-calc--stack))
-              ((eq obj '\\)             ; command: swap
+              ((eq obj '\\)            ; command: swap
                (erase-buffer)
                (if (cdr rpn-calc--stack)
                    (let ((tmp (car rpn-calc--stack)))
@@ -247,9 +249,9 @@ active."
                (rpn-calc--push (or (when (symbolp obj)
                                      (assoc (symbol-name obj) rpn-calc-operator-table))
                                    obj)))
-              ((null name)               ; obj is not a symbol -> fail
+              ((null name)             ; obj is not a symbol -> fail
                nil)
-              ((string-match             ; a number + incomplete symbol
+              ((string-match           ; a number + incomplete symbol
                 "^[+-]?[0-9]*\\(?:[0-9]\\|\\.[0-9]+\\)\\(?:e[+-]?\\(?:[0-9]+\\|INF\\)\\)?"
                 name)
                (let ((num (read (match-string 0 name))))
@@ -258,7 +260,7 @@ active."
                  (rpn-calc--push num)
                  ;; recurse
                  (rpn-calc--maybe-commit-current-input)))
-              ((setq obj (let (val)      ; a complete operator
+              ((setq obj (let (val)    ; a complete operator
                            (catch 'ret
                              (dolist (entry rpn-calc-operator-table)
                                (when (string-prefix-p name (car entry))
