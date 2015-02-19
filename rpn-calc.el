@@ -125,20 +125,17 @@ active."
         (string-match "^0*\\(0\\|[^0].*\\)$" str)
         (match-string 1 str)))))
 
-(defun rpn-calc--function-arity (fn)
-  "return (ARITY OPTIONAL-ARITY ACCEPT-REST-ARGS) of FN."
-  (let ((arglist (help-function-arglist fn))
-        (arity 0)
-        (optional-arity 0))
-    (while (and arglist (not (memq (car arglist) '(&optional &rest))))
-      (setq arity   (1+ arity)
-            arglist (cdr arglist)))
-    (when (eq (car arglist) '&optional)
-      (setq arglist (cdr arglist))
-      (while (and arglist (not (eq (car arglist) '&rest)))
-        (setq optional-arity (1+ optional-arity)
-              arglist        (cdr arglist))))
-    (list arity optional-arity (eq (car arglist) '&rest))))
+(defun rpn-calc--function-args (fn)
+  "return (ARGS OPTIONAL-ARGS . REST-ARGS) of FN."
+  (let ((lst (help-function-arglist fn t))
+        args optional-args)
+    (while (and lst (not (memq (car lst) '(&optional &rest))))
+      (push (pop lst) args))
+    (when (eq (car lst) '&optional)
+      (pop lst)
+      (while (and lst (not (eq (car lst) '&rest)))
+        (push (pop lst) optional-args)))
+    (cons (nreverse args) (cons (nreverse optional-args) (cadr lst)))))
 
 ;; + core
 
@@ -156,6 +153,7 @@ active."
     (define-key kmap [remap self-insert-command]   'rpn-calc-self-insert)
     (define-key kmap [remap delete-backward-char]  'rpn-calc-backspace)
     (define-key kmap [remap backward-delete-char]  'rpn-calc-backspace)
+    (define-key kmap [remap backward-kill-word]    'rpn-calc-backward-kill-word)
     (define-key kmap (kbd "DEL")                   'rpn-calc-backspace)
     kmap))
 
@@ -185,7 +183,8 @@ active."
 
 (defun rpn-calc--pre-command-hook ()
   (unless (and (symbolp this-command)
-               (string-prefix-p "rpn-" (symbol-name this-command)))
+               (or (string-prefix-p "rpn-" (symbol-name this-command))
+                   (eq this-command 'digit-argument)))
     (rpn-calc -1)))
 
 (defun rpn-calc--post-command-hook ()
@@ -213,12 +212,12 @@ active."
            (setq obj (eval obj))
            (if (not (functionp obj))
                (push obj rpn-calc--stack)
-             (let* ((arity (rpn-calc--function-arity obj))
-                    (args (nreverse (rpn-calc--take (nth 0 arity))))
+             (let* ((arglst (rpn-calc--function-args obj))
+                    (args (nreverse (rpn-calc--take (length (car arglst)))))
                     (optional-args (if rpn-calc-apply-optional-args
-                                       (nreverse (rpn-calc--take (nth 1 arity)))
-                                     (make-list (nth 1 arity) nil)))
-                    (rest-args (when (and rpn-calc-apply-rest-args (nth 2 arity))
+                                       (nreverse (rpn-calc--take (length (cadr arglst))))
+                                     (make-list (length (cadr arglst)) nil)))
+                    (rest-args (when (and rpn-calc-apply-rest-args (cddr arglst))
                                  (prog1 (nreverse rpn-calc--stack)
                                    (setq rpn-calc--stack nil)))))
                (push (apply obj (nconc args optional-args rest-args)) rpn-calc--stack)))))))
@@ -278,9 +277,14 @@ active."
 (defun rpn-calc--annotation (item)
   (cond
    ((integerp item)
-    (format " (HEX:%s) (BIN:%s)" (rpn-calc--int-to-hex item) (rpn-calc--int-to-bin item)))
+    (format " (HEX:%s, BIN:%s)"
+            (rpn-calc--int-to-hex item)
+            (rpn-calc--int-to-bin item)))
    ((floatp item)
-    (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))))
+    (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
+   ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
+    (let ((args (rpn-calc--function-args (cadr item))))
+      (concat " " (prin1-to-string (nconc (car args) (cddr args))))))))
 
 ;; + commands
 
@@ -290,12 +294,17 @@ active."
     (goto-char (point-max))
     (insert ch)))
 
-(defun rpn-calc-backspace ()
-  (interactive)
+(defun rpn-calc-backspace (n)
+  (interactive "p")
   (with-current-buffer rpn-calc--temp-buffer
     (if (zerop (buffer-size))
-        (pop rpn-calc--stack)
-      (backward-delete-char 1))))
+        (dotimes (_ n) (pop rpn-calc--stack))
+      (backward-delete-char n))))
+
+(defun rpn-calc-backward-kill-word (n)
+  (interactive "p")
+  (with-current-buffer rpn-calc--temp-buffer
+    (backward-kill-word n)))
 
 ;; + provide
 
