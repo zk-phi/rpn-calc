@@ -48,10 +48,13 @@
     ("^" 2 . logxor)
     ("~" 1 . lognot)
     ("<<"  2 . ash)
-    (">>"  2 . (lambda (a b) (ash a (- b))))
+    (">>"  2 . (lambda (value count) (ash value (- count))))
     ("sin" 1 . sin)
     ("cos" 1 . cos)
-    ("tan" 1 . tan))
+    ("tan" 1 . tan)
+    ("log" 2 . (lambda (base value) (log value base)))
+    ("lg" 1 . log10)
+    ("ln" 1 . log))
   "list of (NAME ARITY . FUNCTION)."
   :group 'rpn-calc)
 
@@ -141,6 +144,8 @@ active."
 
 ;; *TODO* operator table should be a (patricia)-trie
 ;; *TODO* display ASCII char ?
+;; *TODO* RET to insert the value
+;; *TODO* `popup-next' to insert to middle of the stack
 
 (defvar rpn-calc--saved-minor-modes nil)
 (defvar rpn-calc--temp-buffer nil)

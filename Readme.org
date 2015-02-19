@@ -63,6 +63,9 @@ and invoke with =M-x rpn-calc=.
   - sin :: pop =x= and push =(sin x)=
   - cos :: pop =x= and push =(cos x)=
   - tan :: pop =x= and push =(tan x)=
+  - ln :: pop =x= and push =(log x)=
+  - lg :: pop =x= and push =(log x 10)=
+  - log :: pop =y=, =x= and push =(log y x)=
 
 - bitwise
   - & :: pop =y=, =x= and push =(logand x y)= (bitwise and)
