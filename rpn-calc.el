@@ -76,8 +76,6 @@ active."
 
 ;; + utils
 
-;; *FIXME* incorrect for huge integers (rpn-calc--int-to-hex ?\xffffff)
-
 (defun rpn-calc--int-to-bin (int)
   (let* ((str (make-string 32 0)))
     (dotimes (n 32)
@@ -146,7 +144,6 @@ active."
 ;; *TODO* display ASCII char ?
 ;; *TODO* RET to insert the value
 ;; *TODO* `popup-next' to insert to middle of the stack
-;; *TODO* implement partial-application of functions ?
 
 (defvar rpn-calc--saved-minor-modes nil)
 (defvar rpn-calc--temp-buffer nil)
@@ -156,11 +153,16 @@ active."
 
 (defconst rpn-calc-map
   (let ((kmap (make-sparse-keymap)))
-    (define-key kmap [remap self-insert-command]   'rpn-calc-self-insert)
-    (define-key kmap [remap delete-backward-char]  'rpn-calc-backspace)
-    (define-key kmap [remap backward-delete-char]  'rpn-calc-backspace)
-    (define-key kmap [remap backward-kill-word]    'rpn-calc-backward-kill-word)
-    (define-key kmap (kbd "DEL")                   'rpn-calc-backspace)
+    (define-key kmap [remap self-insert-command]  'rpn-calc-self-insert)
+    (define-key kmap [remap delete-backward-char] 'rpn-calc-backspace)
+    (define-key kmap [remap backward-delete-char] 'rpn-calc-backspace)
+    (define-key kmap [remap backward-kill-word]   'rpn-calc-backward-kill-word)
+    (define-key kmap (kbd "C-n")                  'rpn-calc-next)
+    (define-key kmap (kbd "C-p")                  'rpn-calc-previous)
+    (define-key kmap (kbd "<left>")               'rpn-calc-next)
+    (define-key kmap (kbd "<right>")              'rpn-calc-previous)
+    (define-key kmap (kbd "DEL")                  'rpn-calc-backspace)
+    (define-key kmap (kbd "RET")                  'rpn-calc-select)
     kmap))
 
 ;;;###autoload
@@ -272,36 +274,35 @@ active."
                (erase-buffer)
                (rpn-calc--push obj)))))))
 
-(defun rpn-calc--make-popup-item (str annotation)
-  )
-
 (defun rpn-calc--refresh-popup ()
   (with-current-buffer rpn-calc--temp-buffer
-    (let ((head (concat (buffer-string)
-                        (rpn-calc--annotation (ignore-errors (read (buffer-string))))))
+    (let ((head (let ((str (buffer-string)))
+                 (popup-make-item
+                  (concat str (rpn-calc--annotation (ignore-errors (read str))))
+                  :value str)))
           (stack (mapcar (lambda (item)
-                           (concat (prin1-to-string item) (rpn-calc--annotation item)))
+                           (let ((str (prin1-to-string item)))
+                             (popup-make-item
+                              (concat str (rpn-calc--annotation item)) :value str)))
                          rpn-calc--stack)))
       (popup-set-list rpn-calc--popup (cons head stack))
       (popup-draw rpn-calc--popup))))
 
 (defun rpn-calc--annotation (item)
-  (cond
-   ((integerp item)
-    (format " (HEX:%s, BIN:%s)"
-            (rpn-calc--int-to-hex item)
-            (rpn-calc--int-to-bin item)))
-   ((floatp item)
-    (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
-   ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
-    (let ((args (rpn-calc--function-args (cadr item))))
-      (concat " ("
-              (mapconcat 'prin1-to-string (car args) " ")
-              (when rpn-calc-apply-optional-args
-                (mapconcat 'prin1-to-string (cadr args) " "))
-              (when (and rpn-calc-apply-rest-args (cddr args))
-                (concat " . " (prin1-to-string (cddr args))))
-              ")")))))
+  (cond ((integerp item)
+         (format " (HEX:%s, BIN:%s)"
+                 (rpn-calc--int-to-hex item)
+                 (rpn-calc--int-to-bin item)))
+        ((floatp item)
+         (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
+        ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
+         (let ((args (rpn-calc--function-args (cadr item))))
+           (format " (%s%s%s)"
+                   (mapconcat 'prin1-to-string (car args) " ")
+                   (if (not rpn-calc-apply-optional-args) ""
+                     (concat " " (mapconcat 'prin1-to-string (cadr args) " ")))
+                   (if (not (and rpn-calc-apply-rest-args (cddr args))) ""
+                     (concat " . " (prin1-to-string (cddr args)))))))))
 
 ;; + commands
 
@@ -322,6 +323,22 @@ active."
   (interactive "p")
   (with-current-buffer rpn-calc--temp-buffer
     (backward-kill-word n)))
+
+(defun rpn-calc-next (n)
+  (interactive "p")
+  (dotimes (_ n)
+    (popup-next rpn-calc--popup)))
+
+(defun rpn-calc-previous (n)
+  (interactive "p")
+  (dotimes (_ n)
+    (popup-previous rpn-calc--popup)))
+
+(defun rpn-calc-select ()
+  (interactive)
+  (insert
+   (prog1 (popup-item-value (popup-selected-item rpn-calc--popup))
+     (rpn-calc -1))))
 
 ;; + provide
 
