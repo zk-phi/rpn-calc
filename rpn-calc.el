@@ -146,6 +146,7 @@ active."
 ;; *TODO* display ASCII char ?
 ;; *TODO* RET to insert the value
 ;; *TODO* `popup-next' to insert to middle of the stack
+;; *TODO* implement partial-application of functions ?
 
 (defvar rpn-calc--saved-minor-modes nil)
 (defvar rpn-calc--temp-buffer nil)
@@ -271,6 +272,9 @@ active."
                (erase-buffer)
                (rpn-calc--push obj)))))))
 
+(defun rpn-calc--make-popup-item (str annotation)
+  )
+
 (defun rpn-calc--refresh-popup ()
   (with-current-buffer rpn-calc--temp-buffer
     (let ((head (concat (buffer-string)
@@ -291,10 +295,13 @@ active."
     (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
    ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
     (let ((args (rpn-calc--function-args (cadr item))))
-      (concat " " (prin1-to-string
-                   (nconc (car args)
-                          (when rpn-calc-apply-optional-args (cadr args))
-                          (when rpn-calc-apply-rest-args (cddr args)))))))))
+      (concat " ("
+              (mapconcat 'prin1-to-string (car args) " ")
+              (when rpn-calc-apply-optional-args
+                (mapconcat 'prin1-to-string (cadr args) " "))
+              (when (and rpn-calc-apply-rest-args (cddr args))
+                (concat " . " (prin1-to-string (cddr args))))
+              ")")))))
 
 ;; + commands
 
