@@ -58,8 +58,7 @@
   "list of (NAME ARITY . FUNCTION)."
   :group 'rpn-calc)
 
-(defcustom rpn-calc-incompatible-minor-modes
-  '(phi-autopair-mode key-combo-mode)
+(defcustom rpn-calc-incompatible-minor-modes '()
   "list of minor-modes that should be disabled while RPN calc is
 active."
   :group 'rpn-calc)
