@@ -295,6 +295,9 @@ active."
                  (rpn-calc--int-to-bin item)))
         ((floatp item)
          (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
+        ((and item (symbolp item))
+         (and (boundp item)
+              (format " (%s)" (prin1-to-string (symbol-value item)))))
         ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
          (let ((args (rpn-calc--function-args (cadr item))))
            (format " (%s%s%s)"
