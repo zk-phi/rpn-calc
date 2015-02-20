@@ -311,6 +311,25 @@ active."
 
 (defun rpn-calc-self-insert (ch)
   (interactive (list last-input-event))
+  ;; Support keypad keys too
+  (when (symbolp ch)
+    (cond
+     ((string= "kp-add"      (symbol-name ch)) (setq ch ?+))
+     ((string= "kp-subtract" (symbol-name ch)) (setq ch ?-))
+     ((string= "kp-multiply" (symbol-name ch)) (setq ch ?*))
+     ((string= "kp-divide"   (symbol-name ch)) (setq ch ?/))
+     ((string= "kp-0"        (symbol-name ch)) (setq ch ?0))
+     ((string= "kp-1"        (symbol-name ch)) (setq ch ?1))
+     ((string= "kp-2"        (symbol-name ch)) (setq ch ?2))
+     ((string= "kp-3"        (symbol-name ch)) (setq ch ?3))
+     ((string= "kp-4"        (symbol-name ch)) (setq ch ?4))
+     ((string= "kp-5"        (symbol-name ch)) (setq ch ?5))
+     ((string= "kp-6"        (symbol-name ch)) (setq ch ?6))
+     ((string= "kp-7"        (symbol-name ch)) (setq ch ?7))
+     ((string= "kp-8"        (symbol-name ch)) (setq ch ?8))
+     ((string= "kp-9"        (symbol-name ch)) (setq ch ?9))
+     ((string= "kp-decimal"  (symbol-name ch)) (setq ch ?.))
+     (t nil)))
   (with-current-buffer rpn-calc--temp-buffer
     (goto-char (point-max))
     (insert ch)))
@@ -339,9 +358,13 @@ active."
 
 (defun rpn-calc-select ()
   (interactive)
-  (insert
-   (prog1 (popup-item-value (popup-selected-item rpn-calc--popup))
-     (rpn-calc -1))))
+  (let ((return))
+    ;; Return the last valid value from the stack
+    (while (null return)
+      (setq return (popup-item-value (popup-selected-item rpn-calc--popup)))
+      (rpn-calc-previous 1))
+    (insert return))
+  (rpn-calc -1))
 
 ;; + provide
 
