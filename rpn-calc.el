@@ -173,7 +173,8 @@ active."
                rpn-calc--buffer (current-buffer)
                rpn-calc--temp-buffer (get-buffer-create " *rpn-calc*")
                rpn-calc--saved-minor-modes
-               (mapcar (lambda (mode) (when mode (prog1 mode (funcall mode -1))))
+               (mapcar (lambda (mode) (when (and (boundp mode) (symbol-value mode))
+                                        (prog1 mode (funcall mode -1))))
                        rpn-calc-incompatible-minor-modes)
                rpn-calc--popup
                (popup-create (point) 60 10 :selection-face 'popup-menu-selection-face))
@@ -184,7 +185,7 @@ active."
          (remove-hook 'post-command-hook 'rpn-calc--post-command-hook)
          (remove-hook 'pre-command-hook 'rpn-calc--pre-command-hook)
          (popup-delete rpn-calc--popup)
-         (mapc 'funcall rpn-calc-incompatible-minor-modes)
+         (mapc 'funcall rpn-calc--saved-minor-modes)
          (kill-buffer rpn-calc--temp-buffer))))
 
 (defun rpn-calc--pre-command-hook ()
