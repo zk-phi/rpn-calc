@@ -141,7 +141,6 @@ active."
 
 ;; *TODO* operator table should be a (patricia)-trie
 ;; *TODO* display ASCII char ?
-;; *TODO* RET to insert the value
 ;; *TODO* `popup-next' to insert to middle of the stack
 
 (defvar rpn-calc--saved-minor-modes nil)
@@ -190,8 +189,7 @@ active."
 
 (defun rpn-calc--pre-command-hook ()
   (unless (and (symbolp this-command)
-               (or (string-prefix-p "rpn-" (symbol-name this-command))
-                   (eq this-command 'digit-argument)))
+               (string-prefix-p "rpn-" (symbol-name this-command)))
     (rpn-calc -1)))
 
 (defun rpn-calc--post-command-hook ()
@@ -308,30 +306,11 @@ active."
 
 ;; + commands
 
-(defun rpn-calc-self-insert (ch)
-  (interactive (list last-input-event))
-  ;; Support keypad keys too
-  (when (symbolp ch)
-    (cond
-     ((string= "kp-add"      (symbol-name ch)) (setq ch ?+))
-     ((string= "kp-subtract" (symbol-name ch)) (setq ch ?-))
-     ((string= "kp-multiply" (symbol-name ch)) (setq ch ?*))
-     ((string= "kp-divide"   (symbol-name ch)) (setq ch ?/))
-     ((string= "kp-0"        (symbol-name ch)) (setq ch ?0))
-     ((string= "kp-1"        (symbol-name ch)) (setq ch ?1))
-     ((string= "kp-2"        (symbol-name ch)) (setq ch ?2))
-     ((string= "kp-3"        (symbol-name ch)) (setq ch ?3))
-     ((string= "kp-4"        (symbol-name ch)) (setq ch ?4))
-     ((string= "kp-5"        (symbol-name ch)) (setq ch ?5))
-     ((string= "kp-6"        (symbol-name ch)) (setq ch ?6))
-     ((string= "kp-7"        (symbol-name ch)) (setq ch ?7))
-     ((string= "kp-8"        (symbol-name ch)) (setq ch ?8))
-     ((string= "kp-9"        (symbol-name ch)) (setq ch ?9))
-     ((string= "kp-decimal"  (symbol-name ch)) (setq ch ?.))
-     (t nil)))
+(defun rpn-calc-self-insert (n)
+  (interactive "P")
   (with-current-buffer rpn-calc--temp-buffer
     (goto-char (point-max))
-    (insert ch)))
+    (call-interactively 'self-insert-command)))
 
 (defun rpn-calc-backspace (n)
   (interactive "p")
