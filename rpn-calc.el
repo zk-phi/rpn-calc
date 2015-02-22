@@ -173,9 +173,10 @@ active."
                rpn-calc--buffer (current-buffer)
                rpn-calc--temp-buffer (get-buffer-create " *rpn-calc*")
                rpn-calc--saved-minor-modes
-               (mapcar (lambda (mode) (when (and (boundp mode) (symbol-value mode))
-                                        (prog1 mode (funcall mode -1))))
-                       rpn-calc-incompatible-minor-modes)
+               (delq nil
+                     (mapcar (lambda (mode) (when (and (boundp mode) (symbol-value mode))
+                                              (prog1 mode (funcall mode -1))))
+                             rpn-calc-incompatible-minor-modes))
                rpn-calc--popup
                (popup-create (point) 60 10 :selection-face 'popup-menu-selection-face))
          (add-hook 'post-command-hook 'rpn-calc--post-command-hook)
