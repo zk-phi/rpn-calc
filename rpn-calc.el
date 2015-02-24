@@ -180,6 +180,10 @@ active."
                              rpn-calc-incompatible-minor-modes))
                rpn-calc--popup
                (popup-create (point) 60 10 :selection-face 'popup-menu-selection-face))
+         ;; *TODO* accept multiple items in the region ?
+         (when (use-region-p)
+           (let ((str (buffer-substring (region-beginning) (region-end))))
+             (with-current-buffer rpn-calc--temp-buffer (insert str " "))))
          (add-hook 'post-command-hook 'rpn-calc--post-command-hook)
          (add-hook 'pre-command-hook 'rpn-calc--pre-command-hook)
          (rpn-calc--post-command-hook))
