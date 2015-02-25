@@ -305,7 +305,8 @@ active."
         ((and item (symbolp item))      ; variable
          (when (boundp item)
            (format " (%s)" (prin1-to-string (symbol-value item)))))
-        ((and (consp item) (eq (car item) 'quote) (functionp (cadr item))) ; function
+        ((and (consp item) (memq (car item) '(quote function))
+              (functionp (cadr item))) ; function
          (let ((args (rpn-calc--function-args (cadr item))))
            (format " (%s%s%s)"
                    (mapconcat 'prin1-to-string (car args) " ")
