@@ -304,8 +304,8 @@ active."
         ((floatp item)
          (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
         ((and item (symbolp item))
-         (and (boundp item)
-              (format " (%s)" (prin1-to-string (symbol-value item)))))
+         (when (boundp item)
+           (format " (%s)" (prin1-to-string (symbol-value item)))))
         ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
          (let ((args (rpn-calc--function-args (cadr item))))
            (format " (%s%s%s)"
@@ -347,13 +347,12 @@ active."
 
 (defun rpn-calc-select ()
   (interactive)
-  (let ((return))
-    ;; Return the last valid value from the stack
-    (while (null return)
-      (setq return (popup-item-value (popup-selected-item rpn-calc--popup)))
-      (rpn-calc-previous 1))
-    (insert return))
-  (rpn-calc -1))
+  (let ((val (or (popup-item-value (popup-selected-item rpn-calc--popup))
+                 (progn
+                   (rpn-calc-next 1)
+                   (popup-item-value (popup-selected-item rpn-calc--popup))))))
+    (when val (insert val))
+    (rpn-calc -1)))
 
 ;; + provide
 
