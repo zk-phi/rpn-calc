@@ -140,7 +140,6 @@ active."
 
 ;; + core
 
-;; *TODO* operator table should be a (patricia)-trie
 ;; *TODO* display ASCII char ?
 ;; *TODO* `popup-next' to insert to middle of the stack
 
@@ -297,16 +296,16 @@ active."
       (popup-draw rpn-calc--popup))))
 
 (defun rpn-calc--annotation (item)
-  (cond ((integerp item)
+  (cond ((integerp item)                ; integer
          (format " (HEX:%s, BIN:%s)"
                  (rpn-calc--int-to-hex item)
                  (rpn-calc--int-to-bin item)))
-        ((floatp item)
+        ((floatp item)                  ; float
          (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
-        ((and item (symbolp item))
+        ((and item (symbolp item))      ; variable
          (when (boundp item)
            (format " (%s)" (prin1-to-string (symbol-value item)))))
-        ((and (consp item) (eq (car item) 'quote) (functionp (cadr item)))
+        ((and (consp item) (eq (car item) 'quote) (functionp (cadr item))) ; function
          (let ((args (rpn-calc--function-args (cadr item))))
            (format " (%s%s%s)"
                    (mapconcat 'prin1-to-string (car args) " ")
