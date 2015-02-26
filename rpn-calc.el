@@ -141,9 +141,9 @@ active."
 ;; + core
 
 ;; *TODO* display ASCII char ?
-;; *TODO* `popup-next' to insert to middle of the stack
 
 (defvar rpn-calc--saved-minor-modes nil)
+(defvar rpn-calc--stack-prepend nil)
 (defvar rpn-calc--temp-buffer nil)
 (defvar rpn-calc--buffer nil)
 (defvar rpn-calc--stack nil)
@@ -169,9 +169,10 @@ active."
   :init-value nil
   :keymap rpn-calc-map
   (cond (rpn-calc
-         (setq rpn-calc--stack    nil
-               rpn-calc--buffer (current-buffer)
-               rpn-calc--temp-buffer (get-buffer-create " *rpn-calc*")
+         (setq rpn-calc--stack         nil
+               rpn-calc--stack-prepend nil
+               rpn-calc--buffer        (current-buffer)
+               rpn-calc--temp-buffer   (get-buffer-create " *rpn-calc*")
                rpn-calc--saved-minor-modes
                (delq nil
                      (mapcar (lambda (mode) (when (and (boundp mode) (symbol-value mode))
@@ -283,31 +284,37 @@ active."
 
 (defun rpn-calc--refresh-popup ()
   (with-current-buffer rpn-calc--temp-buffer
-    (let ((head (let ((str (buffer-string)))
-                 (popup-make-item
-                  (concat str (rpn-calc--annotation (ignore-errors (read str))))
-                  :value str)))
+    (let ((prepend (mapcar (lambda (item)
+                             (let ((str (prin1-to-string item)))
+                               (popup-make-item
+                                (concat str (rpn-calc--annotation item)) :value str)))
+                           rpn-calc--stack-prepend))
+          (head (let ((str (buffer-string)))
+                  (popup-make-item
+                   (concat str (rpn-calc--annotation (ignore-errors (read str)) t))
+                   :value str)))
           (stack (mapcar (lambda (item)
                            (let ((str (prin1-to-string item)))
                              (popup-make-item
                               (concat str (rpn-calc--annotation item)) :value str)))
                          rpn-calc--stack)))
-      (popup-set-list rpn-calc--popup (cons head stack))
+      (popup-set-list rpn-calc--popup (nconc (nreverse prepend) (cons head stack)))
       (popup-draw rpn-calc--popup))))
 
-(defun rpn-calc--annotation (item)
+(defun rpn-calc--annotation (item &optional raw)
   (cond ((integerp item)                ; integer
          (format " (HEX:%s, BIN:%s)"
                  (rpn-calc--int-to-hex item)
                  (rpn-calc--int-to-bin item)))
         ((floatp item)                  ; float
          (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
-        ((and item (symbolp item))      ; variable
+        ((and raw (symbolp item) (not (null item))) ; variable
          (when (boundp item)
            (format " (%s)" (prin1-to-string (symbol-value item)))))
-        ((and (consp item) (memq (car item) '(quote function))
-              (functionp (cadr item))) ; function
-         (let ((args (rpn-calc--function-args (cadr item))))
+        ((or (and (not raw) (functionp item))
+             (and raw (consp item) (memq (car item) '(quote function))
+                  (functionp (setq item (cadr item))))) ; function
+         (let ((args (rpn-calc--function-args item)))
            (format " (%s%s%s)"
                    (mapconcat 'prin1-to-string (car args) " ")
                    (if (not rpn-calc-apply-optional-args) ""
@@ -338,12 +345,16 @@ active."
 (defun rpn-calc-next (n)
   (interactive "p")
   (dotimes (_ n)
-    (popup-next rpn-calc--popup)))
+    (unless (>= (1+ (popup-cursor rpn-calc--popup)) (length (popup-list rpn-calc--popup)))
+      (push (pop rpn-calc--stack) rpn-calc--stack-prepend)
+      (popup-next rpn-calc--popup))))
 
 (defun rpn-calc-previous (n)
   (interactive "p")
   (dotimes (_ n)
-    (popup-previous rpn-calc--popup)))
+    (unless (zerop (popup-cursor rpn-calc--popup))
+      (push (pop rpn-calc--stack-prepend) rpn-calc--stack)
+      (popup-previous rpn-calc--popup))))
 
 (defun rpn-calc-select ()
   (interactive)
