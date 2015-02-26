@@ -27,6 +27,8 @@ use. For example,
   can also be used as an interactive, RPN version of
   =eval-expression=.
 
+See also "Other Features" section.
+
 ** Installation
 
 Require this script
@@ -81,32 +83,42 @@ and invoke with =M-x rpn-calc=.
 
 ** Other Features
 
-- auto-committing
+- Auto-committing
 
   If there seems no ambiguity, rpn-calc automatically commits the
   input after entering :
 
   - non-digit character after a number ::
 
-    =1'1+[SPC]= is equivalent to =1[SPC]'1+[SPC]=.
+       =1'1+[SPC]= is equivalent to =1[SPC]'1+[SPC]=.
 
   - outer-most closing paren ::
 
-    =(1+ (point))[SPC]= is equivalent to =(1+ (point))=.
+       =(1+ (point))= is equivalent to =(1+ (point))[SPC]=.
 
   - complete operator name ::
 
-    =1sin= is equivalent to =1sin[SPC]=.
+       =1sin= is equivalent to =1sin[SPC]=.
 
-- display binary representation of numbers
+- Display binary representation of numbers
 
   When you push some numbers, their binary representation is
   displayed.
 
-- function quote
+- Function quote
 
   You can quote function (tell rpn-calc not to call it) with function
   quote (=#'​=).
+
+- Insert result to the buffer
+
+  You can insert the result by pressing =RET=.
+
+- Push items into middle of the stack.
+
+  You can move cursor with =rpn-calc-next= (bound to =C-n= by default)
+  and =rpn-calc-previous= (=C-p= resp.), to insert items into middle
+  of the stack.
 
 ** Dependencies
 
