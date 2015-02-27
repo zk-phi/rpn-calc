@@ -64,9 +64,11 @@
 active."
   :group 'rpn-calc)
 
-(defcustom rpn-calc-apply-optional-args nil
-  "when non-nil, optional arguments are applied to pushed
-  functions."
+(defcustom rpn-calc-apply-optional-args 'guess
+  "when nil, optional arguments are NOT applied to pushed
+  functions. when 'guess, optional arguments are applied only
+  when all arguments are either optional or rest. otherwise,
+  optional arguments are always applied."
   :group 'rpn-calc)
 
 (defcustom rpn-calc-apply-rest-args t
@@ -219,7 +221,7 @@ active."
 
 (defun rpn-calc--push (obj)
   (with-current-buffer rpn-calc--buffer
-    (let (arglst n-args n-optionals n-required)
+    (let (arglst n-args n-optionals n-required req-optionals)
       (cond ((and (consp obj) (eq (car obj) 'function)) ; quoted function
              (push (eval obj) rpn-calc--stack))
             ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
@@ -232,16 +234,19 @@ active."
                (not (functionp obj)))
              (push obj rpn-calc--stack))
             ((progn             ; fn with &rest args
-               (setq arglst      (rpn-calc--function-args obj)
-                     n-args      (length (car arglst))
-                     n-optionals (length (cadr arglst))
-                     n-required  (+ n-args (if rpn-calc-apply-optional-args n-optionals 0)))
+               (setq arglst        (rpn-calc--function-args obj)
+                     n-args        (length (car arglst))
+                     n-optionals   (length (cadr arglst))
+                     req-optionals (and rpn-calc-apply-optional-args
+                                        (or (not (eq rpn-calc-apply-optional-args 'guess))
+                                            (zerop n-args)))
+                     n-required    (+ n-args (if req-optionals n-optionals 0)))
                (when (< (length rpn-calc--stack) n-required)
                  (error (format "too few arguments (required %d)" n-required)))
                (and (cddr arglst) rpn-calc-apply-rest-args))
              (setq rpn-calc--stack (nreverse rpn-calc--stack))
              (let* ((args (rpn-calc--take n-args))
-                    (optionals (if rpn-calc-apply-optional-args
+                    (optionals (if req-optionals
                                    (rpn-calc--take n-optionals)
                                  (make-list n-optionals nil)))
                     (rest-args (prog1 rpn-calc--stack
@@ -325,8 +330,12 @@ active."
          (let ((args (rpn-calc--function-args item)))
            (format " (%s%s%s)"
                    (mapconcat 'prin1-to-string (car args) " ")
-                   (if (not rpn-calc-apply-optional-args) ""
-                     (concat " " (mapconcat 'prin1-to-string (cadr args) " ")))
+                   (if (or (null (cadr args))
+                           (not rpn-calc-apply-optional-args)
+                           (and (eq rpn-calc-apply-optional-args 'guess)
+                                (car args))) ""
+                     (concat (when (car args) " ")
+                             (mapconcat 'prin1-to-string (cadr args) " ")))
                    (if (not (and rpn-calc-apply-rest-args (cddr args))) ""
                      (concat " . " (prin1-to-string (cddr args)))))))))
 
