@@ -304,12 +304,11 @@ active."
   (with-current-buffer rpn-calc--temp-buffer
     (let* ((obj-to-item (lambda (item)
                           (let ((str (prin1-to-string item)))
-                            (popup-make-item
-                             (concat str (rpn-calc--annotation item)) :value str))))
+                            (concat str (rpn-calc--annotation item)))))
            (prepend (nreverse (mapcar obj-to-item rpn-calc--stack-prepend)))
            (head (let* ((str (buffer-string))
                         (expr (ignore-errors (read str))))
-                   (popup-make-item (concat str (rpn-calc--annotation expr t)) :value str)))
+                   (concat str (rpn-calc--annotation expr t))))
            (stack (mapcar obj-to-item rpn-calc--stack)))
       (popup-set-list rpn-calc--popup (nconc prepend (cons head stack)))
       (popup-draw rpn-calc--popup))))
@@ -324,20 +323,22 @@ active."
         ((and raw (symbolp item) (not (null item))) ; variable
          (when (boundp item)
            (format " (%s)" (prin1-to-string (symbol-value item)))))
-        ((or (and (not raw) (functionp item))
-             (and raw (consp item) (memq (car item) '(quote function))
-                  (functionp (setq item (cadr item))))) ; function
-         (let ((args (rpn-calc--function-args item)))
-           (format " (%s%s%s)"
-                   (mapconcat 'prin1-to-string (car args) " ")
-                   (if (or (null (cadr args))
-                           (not rpn-calc-apply-optional-args)
-                           (and (eq rpn-calc-apply-optional-args 'guess)
-                                (car args))) ""
-                     (concat (when (car args) " ")
-                             (mapconcat 'prin1-to-string (cadr args) " ")))
-                   (if (not (and rpn-calc-apply-rest-args (cddr args))) ""
-                     (concat " . " (prin1-to-string (cddr args)))))))))
+        ((if (not raw)                  ; function
+             (functionp item)
+           (and (consp item) (memq (car item) '(quote function))
+                (functionp (setq item (cadr item)))))
+         (let ((arglst (rpn-calc--function-args item))
+               lst)
+           (when (and (cddr arglst) rpn-calc-apply-rest-args) ; rest-args
+             (push (concat ". " (prin1-to-string (cddr arglst))) lst))
+           (when (and (cadr arglst)   ; optional-args
+                      rpn-calc-apply-optional-args
+                      (or (not (eq rpn-calc-apply-optional-args 'guess))
+                          (null (car arglst))))
+             (push (mapconcat 'prin1-to-string (cadr arglst) " ") lst))
+           (when (car arglst)
+             (push (mapconcat 'prin1-to-string (car arglst) " ") lst)) ; args
+           (concat " (" (mapconcat 'identity lst " ") ")")))))
 
 ;; + commands
 
@@ -375,10 +376,10 @@ active."
 
 (defun rpn-calc-select ()
   (interactive)
-  (let ((val (or (popup-item-value (popup-selected-item rpn-calc--popup))
-                 (progn
-                   (rpn-calc-next 1)
-                   (popup-item-value (popup-selected-item rpn-calc--popup))))))
+  (let ((val (with-current-buffer rpn-calc--temp-buffer
+               (if (not (= (point-min) (point-max)))
+                   (buffer-string)
+                 (and rpn-calc--stack (prin1-to-string (car rpn-calc--stack)))))))
     (when val (insert val))
     (rpn-calc -1)))
 
