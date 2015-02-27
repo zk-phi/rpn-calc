@@ -212,31 +212,44 @@ active."
 (defun rpn-calc--take (n)
   "take first N elements from the stack."
   (when (> n 0)
-    (let* ((last-cell (nthcdr (1- n) rpn-calc--stack)))
-      (unless last-cell (error "stack underflow"))
+    (let ((last-cell (nthcdr (1- n) rpn-calc--stack)))
       (prog1 rpn-calc--stack
         (setq rpn-calc--stack (cdr last-cell))
         (setcdr last-cell nil)))))
 
 (defun rpn-calc--push (obj)
   (with-current-buffer rpn-calc--buffer
-    (cond ((and (consp obj) (eq (car obj) 'function)) ; quoted function
-           (push (eval obj) rpn-calc--stack))
-          ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
-           (push (apply (cdr obj) (nreverse (rpn-calc--take (car obj)))) rpn-calc--stack))
-          (t                           ; other
-           (setq obj (eval obj))
-           (if (not (functionp obj))
-               (push obj rpn-calc--stack)
-             (let* ((arglst (rpn-calc--function-args obj))
-                    (args (nreverse (rpn-calc--take (length (car arglst)))))
-                    (optional-args (if rpn-calc-apply-optional-args
-                                       (nreverse (rpn-calc--take (length (cadr arglst))))
-                                     (make-list (length (cadr arglst)) nil)))
-                    (rest-args (when (and rpn-calc-apply-rest-args (cddr arglst))
-                                 (prog1 (nreverse rpn-calc--stack)
-                                   (setq rpn-calc--stack nil)))))
-               (push (apply obj (nconc args optional-args rest-args)) rpn-calc--stack)))))))
+    (let (arglst n-args n-optionals n-required)
+      (cond ((and (consp obj) (eq (car obj) 'function)) ; quoted function
+             (push (eval obj) rpn-calc--stack))
+            ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
+             (setq n-args (car obj))
+             (when (< (length rpn-calc--stack) n-args)
+               (error (format "too few arguments (expected %d)" n-args)))
+             (push (apply (cdr obj) (nreverse (rpn-calc--take n-args))) rpn-calc--stack))
+            ((progn                      ; not fn
+               (setq obj (eval obj))
+               (not (functionp obj)))
+             (push obj rpn-calc--stack))
+            ((progn             ; fn with &rest args
+               (setq arglst      (rpn-calc--function-args obj)
+                     n-args      (length (car arglst))
+                     n-optionals (length (cadr arglst))
+                     n-required  (+ n-args (if rpn-calc-apply-optional-args n-optionals 0)))
+               (when (< (length rpn-calc--stack) n-required)
+                 (error (format "too few arguments (required %d)" n-required)))
+               (and (cddr arglst) rpn-calc-apply-rest-args))
+             (setq rpn-calc--stack (nreverse rpn-calc--stack))
+             (let* ((args (rpn-calc--take n-args))
+                    (optionals (if rpn-calc-apply-optional-args
+                                   (rpn-calc--take n-optionals)
+                                 (make-list n-optionals nil)))
+                    (rest-args (prog1 rpn-calc--stack
+                                 (setq rpn-calc--stack nil))))
+               (setq rpn-calc--stack
+                     (list (apply obj (nconc args optionals rest-args))))))
+            (t                  ; other fn
+             (push (apply obj (nreverse (rpn-calc--take n-required))) rpn-calc--stack))))))
 
 (defun rpn-calc--maybe-commit-current-input ()
   (with-current-buffer rpn-calc--temp-buffer
@@ -284,21 +297,16 @@ active."
 
 (defun rpn-calc--refresh-popup ()
   (with-current-buffer rpn-calc--temp-buffer
-    (let ((prepend (mapcar (lambda (item)
-                             (let ((str (prin1-to-string item)))
-                               (popup-make-item
-                                (concat str (rpn-calc--annotation item)) :value str)))
-                           rpn-calc--stack-prepend))
-          (head (let ((str (buffer-string)))
-                  (popup-make-item
-                   (concat str (rpn-calc--annotation (ignore-errors (read str)) t))
-                   :value str)))
-          (stack (mapcar (lambda (item)
-                           (let ((str (prin1-to-string item)))
-                             (popup-make-item
-                              (concat str (rpn-calc--annotation item)) :value str)))
-                         rpn-calc--stack)))
-      (popup-set-list rpn-calc--popup (nconc (nreverse prepend) (cons head stack)))
+    (let* ((obj-to-item (lambda (item)
+                          (let ((str (prin1-to-string item)))
+                            (popup-make-item
+                             (concat str (rpn-calc--annotation item)) :value str))))
+           (prepend (nreverse (mapcar obj-to-item rpn-calc--stack-prepend)))
+           (head (let* ((str (buffer-string))
+                        (expr (ignore-errors (read str))))
+                   (popup-make-item (concat str (rpn-calc--annotation expr t)) :value str)))
+           (stack (mapcar obj-to-item rpn-calc--stack)))
+      (popup-set-list rpn-calc--popup (nconc prepend (cons head stack)))
       (popup-draw rpn-calc--popup))))
 
 (defun rpn-calc--annotation (item &optional raw)
@@ -345,14 +353,14 @@ active."
 (defun rpn-calc-next (n)
   (interactive "p")
   (dotimes (_ n)
-    (unless (>= (1+ (popup-cursor rpn-calc--popup)) (length (popup-list rpn-calc--popup)))
+    (when rpn-calc--stack
       (push (pop rpn-calc--stack) rpn-calc--stack-prepend)
       (popup-next rpn-calc--popup))))
 
 (defun rpn-calc-previous (n)
   (interactive "p")
   (dotimes (_ n)
-    (unless (zerop (popup-cursor rpn-calc--popup))
+    (when rpn-calc--stack-prepend
       (push (pop rpn-calc--stack-prepend) rpn-calc--stack)
       (popup-previous rpn-calc--popup))))
 
