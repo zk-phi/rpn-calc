@@ -94,8 +94,8 @@ active."
     (dotimes (n 32)
       (aset str (- 32 1 n) (if (zerop (logand int 1)) ?0 ?1))
       (setq int (ash int -1)))
-    (cond ((string-match "^1*1111\\(1\\|[^1].*\\)$" str)
-           (concat "..11" (match-string 1 str)))
+    (cond ((string-match "^1*111\\(1\\|[^1].*\\)$" str)
+           (concat "..1" (match-string 1 str)))
           ((string-match "^0*\\(0\\|[^0].*\\)$" str)
            (match-string 1 str))
           (t
@@ -111,8 +111,12 @@ active."
               ((8) ?8) ((9) ?9) ((10) ?a) ((11) ?b)
               ((12) ?c) ((13) ?d) ((14) ?e) ((15) ?f)))
       (setq int (ash int -4)))
-    (string-match "^0*\\(0\\|[^0].*\\)$" str)
-    (match-string 1 str)))
+    (cond ((string-match "^f*fff\\(f\\|[^f].*\\)$" str)
+           (concat "..f" (match-string 1 str)))
+          ((string-match "^0*\\(0\\|[^0].*\\)$" str)
+           (match-string 1 str))
+          (t
+           str))))
 
 (defun rpn-calc--float-to-ieee754 (float)
   ;; based on ieee-754.el
