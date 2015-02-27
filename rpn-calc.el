@@ -242,7 +242,7 @@ active."
             ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
              (setq n-args (car obj))
              (when (< (length rpn-calc--stack) n-args)
-               (error (format "too few arguments (expected %d)" n-args)))
+               (error (format "too few arguments (required:%d)" n-args)))
              (push (apply (cdr obj) (nreverse (rpn-calc--take n-args))) rpn-calc--stack))
             ((progn                      ; not fn
                (setq obj (eval obj))
@@ -257,7 +257,7 @@ active."
                                             (zerop n-args)))
                      n-required    (+ n-args (if req-optionals n-optionals 0)))
                (when (< (length rpn-calc--stack) n-required)
-                 (error (format "too few arguments (required %d)" n-required)))
+                 (error (format "too few arguments (required:%d)" n-required)))
                (and (cddr arglst) rpn-calc-apply-rest-args))
              (setq rpn-calc--stack (nreverse rpn-calc--stack))
              (let* ((args (rpn-calc--take n-args))
@@ -280,14 +280,16 @@ active."
              (name (when (symbolp obj) (symbol-name obj))))
         (cond ((eq obj ':)             ; command: duplicate
                (erase-buffer)
-               (push (car rpn-calc--stack) rpn-calc--stack))
+               (if rpn-calc--stack
+                   (push (car rpn-calc--stack) rpn-calc--stack)
+                 (error "too few arguments (required:1)")))
               ((eq obj '\\)            ; command: swap
                (erase-buffer)
                (if (cdr rpn-calc--stack)
                    (let ((tmp (car rpn-calc--stack)))
                      (setcar rpn-calc--stack (cadr rpn-calc--stack))
                      (setcar (cdr rpn-calc--stack) tmp))
-                 (error "stack underflow")))
+                 (error "too few arguments (required:2)")))
               ((looking-back "\\(^\\|[^\\]\\)[])}\"\s\t\n]") ; complete input
                (erase-buffer)
                (rpn-calc--push (or (when (symbolp obj)
