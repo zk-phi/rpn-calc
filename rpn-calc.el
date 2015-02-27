@@ -38,23 +38,34 @@
 ;; + custom
 
 (defcustom rpn-calc-operator-table
-  '(("+"   2 . +)
+  '(
+    ;; math
+    ("+"   2 . +)
     ("--"  2 . -)                      ; "10 -10" should be "10 (- 10)"
     ("/"   2 . /)
     ("*"   2 . *)
     ("%"   2 . mod)
+    ("sin" 1 . sin)
+    ("cos" 1 . cos)
+    ("tan" 1 . tan)
+    ("log" 2 . (lambda (base value) (log value base)))
+    ("lg" 1 . log10)
+    ("ln" 1 . log)
+    ;; binary
     ("&" 2 . logand)
     ("|" 2 . logor)
     ("^" 2 . logxor)
     ("~" 1 . lognot)
     ("<<"  2 . ash)
     (">>"  2 . (lambda (value count) (ash value (- count))))
-    ("sin" 1 . sin)
-    ("cos" 1 . cos)
-    ("tan" 1 . tan)
-    ("log" 2 . (lambda (base value) (log value base)))
-    ("lg" 1 . log10)
-    ("ln" 1 . log))
+    ;; int <-> float
+    ("float" 1 . float)
+    ("int" 1 . truncate)
+    ("trunc" 1 . truncate)
+    ("floor" 1 . floor)
+    ("ceil" 1 . ceil)
+    ("round" 1 . round)
+    )
   "list of (NAME ARITY . FUNCTION)."
   :group 'rpn-calc)
 
