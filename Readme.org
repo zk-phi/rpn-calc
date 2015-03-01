@@ -43,6 +43,8 @@ and invoke with =M-x rpn-calc=.
    S-expression (try: =120[SPC]=). You can also enter more complex
    S-expressisons like =(1+ (point))=.
 
+   Tip: in Emacs, =#xFF= = =#b11111111= = =255=
+
 2. When you enter an operator name, top elements in the stack are
    popped and applied to the operator (try: =1[SPC]sin=). List of
    built-in operators are listed below. You can add some operators by
