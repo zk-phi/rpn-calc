@@ -41,17 +41,17 @@
   '(
     ;; math
     ("+"   2 . +)
-    ("--"  2 . -)                      ; "10 -10" should be "10 (- 10)"
+    ("--"  2 . -) ; if operator name is "-", we cannot insert negative number
     ("/"   2 . /)
     ("*"   2 . *)
     ("%"   2 . mod)
     ("sin" 1 . sin)
     ("cos" 1 . cos)
     ("tan" 1 . tan)
-    ("log" 2 . (lambda (base value) (log value base)))
     ("lg" 1 . log10)
     ("ln" 1 . log)
-    ;; binary
+    ("log" 2 . (lambda (base value) (log value base)))
+    ;; bitwise
     ("&" 2 . logand)
     ("|" 2 . logor)
     ("^" 2 . logxor)

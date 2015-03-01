@@ -61,13 +61,13 @@ and invoke with =M-x rpn-calc=.
   - -- :: pop =y=, =x= and push =(- x y)=
   - / :: pop =y=, =x= and push =(/ x y)=
   - * :: pop =y=, =x= and push =(* x y)=
-  - % :: pop =y=, =x= and push =(mod x y)=
-  - sin :: pop =x= and push =(sin x)=
-  - cos :: pop =x= and push =(cos x)=
-  - tan :: pop =x= and push =(tan x)=
-  - ln :: pop =x= and push =(log x)=
-  - lg :: pop =x= and push =(log x 10)=
-  - log :: pop =y=, =x= and push =(log y x)=
+  - % :: pop =y=, =x= and push =(mod x y)= (modulo)
+  - sin :: pop =x= and push =(sin x)= (sine)
+  - cos :: pop =x= and push =(cos x)= (cosine)
+  - tan :: pop =x= and push =(tan x)= (tangent)
+  - ln :: pop =x= and push =(log x)= (natural log)
+  - lg :: pop =x= and push =(log x 10)= (log base 10)
+  - log :: pop =y=, =x= and push =(log y x)= (log base x)
 
 - bitwise
   - & :: pop =y=, =x= and push =(logand x y)= (bitwise and)
@@ -77,7 +77,15 @@ and invoke with =M-x rpn-calc=.
   - << :: pop =y=, =x= and push =(ash x y)= (shift left)
   - >> :: pop =y=, =x= and push =(ash x (- y))= (shift right)
 
-- other
+- int <-> float
+  - float :: pop =x= and push =(float x)= (int -> float)
+  - int :: pop =x= and push =(truncate x)= (float -> int)
+  - trunc :: pop =x= and push =(truncate x)= (round toward zero)
+  - floor :: pop =x= and push =(floor x)= (largest integer < x)
+  - ceil :: pop =x= and push =(ceil x)= (smallest integer > x)
+  - round :: pop =x= and push =(round x)= (nearest integer to x)
+
+- other speical operators
   - : :: pop =x=, and push =x= twice (duplicate)
   - \ :: pop =x=, =y= and push =y=, =x= (swap)
 
