@@ -63,7 +63,7 @@
     ("int" 1 . truncate)
     ("trunc" 1 . truncate)
     ("floor" 1 . floor)
-    ("ceil" 1 . ceil)
+    ("ceil" 1 . ceiling)
     ("round" 1 . round)
     )
   "list of (NAME ARITY . FUNCTION)."
