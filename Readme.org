@@ -40,7 +40,7 @@ and invoke with =M-x rpn-calc=.
 ** Tutorial
 
 1. You can push objects by pressing =[SPC]= after entering an
-   S-expression (try: =120[SPC]=). You can also enter more complex
+   S-expression (try: =120[SPC]=). You can also push more complex
    S-expressisons like =(1+ (point))=.
 
    Tip: in Emacs, =#xFF= = =#b11111111= = =255=
