@@ -18,6 +18,7 @@
 
 ;; Author: zk_phi
 ;; URL: http://hins11.yu-yake.com/
+;; Version: 1.0.0
 ;; Package-Requires: ((popup "0.4"))
 
 ;;; Commentary:
@@ -25,6 +26,8 @@
 ;; Try: "M-x rpn-calc[RET] 1[SPC]2+3/sin'number-to-string[SPC]"
 
 ;;; Change Log:
+
+;; 1.0.0 first release
 
 ;;; Code:
 
