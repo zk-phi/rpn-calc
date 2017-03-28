@@ -179,6 +179,7 @@ active."
     (define-key kmap (kbd "C-p")                  'rpn-calc-previous)
     (define-key kmap (kbd "<down>")               'rpn-calc-next)
     (define-key kmap (kbd "<up>")                 'rpn-calc-previous)
+    (define-key kmap (kbd "SPC")                  'rpn-calc-self-insert)
     (define-key kmap (kbd "DEL")                  'rpn-calc-backspace)
     (define-key kmap (kbd "RET")                  'rpn-calc-select)
     kmap))
