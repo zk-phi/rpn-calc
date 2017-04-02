@@ -8,24 +8,65 @@ quick RPN calculator for hackers
 
 [[img/screencast.gif]]
 
+** NOTE: Breaking changes in the latest version
+*** Quote (') behavior for symbols are changed
+
+|                 | NOT quoted (foo)           | quoted ('foo)  | function-quoted (#'foo) |
+|-----------------+----------------------------+----------------+-------------------------|
+| last version    | variable "foo"             | function "foo" | symbol "foo"            |
+| current version | function or variable "foo" | symbol "foo"   | symbol "foo"           |
+
+Pros: functions also can be called without prefixing quotes ('), and
+function quote (#') is no longer required to push raw symbols
+
+Cons: if a name is both defined as function and variable, it's not
+possible to refer the variable definition
+
+- Function call examples
+  - last version
+
+    : random   -> ERROR: void variable "random"
+    : 'random  -> 12345
+    : #'random -> random
+
+  - current version
+
+    : random   -> 12345
+    : 'random  -> random
+
+- Variable reference examples
+  - last version
+
+    : default-directory   -> "~/"
+    : 'default-directory  -> void function "default-directory"
+    : #'default-directory -> default-directory
+
+  - current version
+
+    : default-directory   -> "~/"
+    : 'default-directory  -> default-diectory
+
 ** Advantages
 
 =rpn-calc= is designed to be a handy tool for daily programming
-use. For example,
+use.
 
 - =rpn-calc= uses popup instead of making a new window, and you don't
-  need to move your eyes between the edit point and calc window.
+  need to move your eyes between the edit point and the calculator
+  window
 
-- =rpn-calc= displays binary representation of numbers automatically,
-  which may be useful for programmers.
+- =rpn-calc= displays hints like binary representation of numbers,
+  which may be useful for programmers
 
-- =rpn-calc= is easier to customize. You can add/remove some
-  operators with just one or two lines of Emacs Lisp.
+- =rpn-calc= is designed to be used with minimal key presses.
+
+- =rpn-calc= is easy to customize. You can add/remove some operators
+  with just one or two lines of Emacs Lisp
 
 - You can push not only numbers but any Emacs Lisp objects to the
-  stack, and you can apply any Lisp function to them. So =rpn-calc=
-  can also be used as an interactive, RPN version of
-  =eval-expression=.
+  stack, and you can apply any Emacs Lisp function to them. So
+  =rpn-calc= can also be used as an interactive, RPN version of
+  =eval-expression=
 
 See also "Other Features" section.
 
@@ -41,20 +82,26 @@ and invoke with =M-x rpn-calc=.
 
 1. You can push objects by pressing =[SPC]= after entering an
    S-expression (try: =120[SPC]=). You can also push more complex
-   S-expressisons like =(1+ (point))=.
+   expressisons like =(buffer-name (current-buffer))[SPC]=, or quoted
+   expressions
 
-   Tip: in Emacs, =#xFF= = =#b11111111= = =255=
+   Pro tip: in Emacs, =#xFF= = =#b11111111= = =255=
 
 2. When you enter an operator name, top elements in the stack are
    popped and applied to the operator (try: =1[SPC]sin=). List of
-   built-in operators are listed below. You can add some operators by
-   setting variable =rpn-calc-operator-table=.
+   built-in operators are listed in the section below. You can add
+   some operators by pushing list like =(NAME ARITY . FUNCTION)= to
+   =rpn-calc-operator-table=
 
-3. You can also enter a function symbol to call it (try:
-   =10[SPC]'number-to-string[SPC]=). If the function accepts =&rest=
+   : (push '("twice" 1 . (lambda (x) (* x 2))) rpn-calc-operator-table)
+
+3. You can also push a function name to call it (try:
+   =10[SPC]number-to-string[SPC]=), or a variable name to refer it
+   (try =most-positive-fixnum[SPC]=). If the function accepts =&rest=
    arguments, all elements in the stack are passed (try:
-   =10[SPC]20[SPC]30[SPC]'list[SPC]=). This behavior can be changed by
-   setting =rpn-calc-apply-rest-args=.
+   =10[SPC]20[SPC]30[SPC]list[SPC]=). This behavior can be changed via
+   =rpn-calc-apply-rest-args=. Note that if a symbol is both defined
+   as function and variable, function definition takes precedence
 
 ** Built-in Operators
 
@@ -87,48 +134,54 @@ and invoke with =M-x rpn-calc=.
   - ceil :: pop =x= and push =(ceil x)= (smallest integer > x)
   - round :: pop =x= and push =(round x)= (nearest integer to x)
 
-- other speical operators
+- stack manipulation
+  - <Backspace> :: pop an item
   - : :: pop =x=, and push =x= twice (duplicate)
   - \ :: pop =x=, =y= and push =y=, =x= (swap)
 
-** Other Features
+** Features
 
-- Auto-committing
+- Implicit "SPC"
 
-  If there seems no ambiguity, rpn-calc automatically commits the
-  input after entering :
+  rpn-calc automatically pushes the input (without pressing "SPC") to
+  reduce keypresses, when :
 
-  - non-digit character after a number ::
+  - non-digit character is entered after a number ::
 
-       =1'1+[SPC]= is equivalent to =1[SPC]'1+[SPC]=.
+    Example: =1evenp[SPC]= is equivalent to =1[SPC]evenp[SPC]=.
 
-  - outer-most closing paren ::
+  - outer-most closing paren is entered ::
 
-       =(1+ (point))= is equivalent to =(1+ (point))[SPC]=.
+    Example: =(1+ (point))= is equivalent to =(1+ (point))[SPC]=.
 
-  - complete operator name ::
+  - build-in operator name is completed ::
 
-       =1sin= is equivalent to =1sin[SPC]=.
+    Example: =1sin= is equivalent to =1[SPC]sin[SPC]=.
 
-- Display binary representation of numbers
+- Display hints for inserted objects
 
-  When you push some numbers, their binary representation is
-  displayed.
+  - hex/binary representation of integers
 
-- Function quote
+  - IEEE754 representation of floating-point numbers
 
-  You can quote function (tell rpn-calc not to call it) with function
-  quote (=#'​=).
+  - arglist of functions
+
+  - variable value of symbols
+
+- Push buffer string to the stack
+
+  You can push expressions in a buffer to the stack by selecting the
+  expression before invoking =rpn-calc=
 
 - Insert result to the buffer
 
-  You can insert the result by pressing =RET=.
+  You can insert the result by pressing =RET= in =rpn-calc=
 
 - Push items into middle of the stack.
 
   You can move cursor with =rpn-calc-next= (bound to =C-n= by default)
-  and =rpn-calc-previous= (=C-p= resp.), to insert items into middle
-  of the stack.
+  and =rpn-calc-previous= (=C-p= resp.) while in =rpn-calc=, to insert
+  items into middle of the stack (try: =1[SPC]2[SPC]3[C-n][SPC]=)
 
 ** Dependencies
 
