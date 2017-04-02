@@ -70,25 +70,29 @@
     ("round" 1 . round)
     )
   "list of (NAME ARITY . FUNCTION)."
-  :group 'rpn-calc)
+  :group 'rpn-calc
+  :type 'sexp)
 
 (defcustom rpn-calc-incompatible-minor-modes
   '(phi-autopair-mode key-combo-mode wrap-region-mode)
   "list of minor-modes that should be disabled while RPN calc is
 active."
-  :group 'rpn-calc)
+  :group 'rpn-calc
+  :type '(repeat symbol))
 
 (defcustom rpn-calc-apply-optional-args 'guess
   "when nil, optional arguments are NOT applied to pushed
   functions. when 'guess, optional arguments are applied only
   when all arguments are either optional or rest. otherwise,
   optional arguments are always applied."
-  :group 'rpn-calc)
+  :group 'rpn-calc
+  :type 'symbol)
 
 (defcustom rpn-calc-apply-rest-args t
   "when non-nil, rest arguments are applied to pushed
   functions."
-  :group 'rpn-calc)
+  :group 'rpn-calc
+  :type 'boolean)
 
 ;; + utils
 
