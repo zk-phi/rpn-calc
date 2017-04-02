@@ -240,40 +240,39 @@ active."
 
 (defun rpn-calc--push (obj)
   (with-current-buffer rpn-calc--buffer
-    (let (arglst n-args n-optionals n-required req-optionals)
-      (cond ((and (consp obj) (eq (car obj) 'function)) ; quoted function
-             (push (eval obj) rpn-calc--stack))
-            ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
+    (let (fn arglst n-args n-optionals n-required req-optionals)
+      (cond ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
              (setq n-args (car obj))
              (when (< (length rpn-calc--stack) n-args)
                (error (format "too few arguments (required:%d)" n-args)))
              (push (apply (cdr obj) (nreverse (rpn-calc--take n-args))) rpn-calc--stack))
-            ((progn                      ; not fn
-               (setq obj (eval obj))
-               (not (functionp obj)))
-             (push obj rpn-calc--stack))
-            ((progn             ; fn with &rest args
-               (setq arglst        (rpn-calc--function-args obj)
-                     n-args        (length (car arglst))
-                     n-optionals   (length (cadr arglst))
-                     req-optionals (and rpn-calc-apply-optional-args
-                                        (or (not (eq rpn-calc-apply-optional-args 'guess))
-                                            (zerop n-args)))
-                     n-required    (+ n-args (if req-optionals n-optionals 0)))
-               (when (< (length rpn-calc--stack) n-required)
-                 (error (format "too few arguments (required:%d)" n-required)))
-               (and (cddr arglst) rpn-calc-apply-rest-args))
-             (setq rpn-calc--stack (nreverse rpn-calc--stack))
-             (let* ((args (rpn-calc--take n-args))
-                    (optionals (if req-optionals
-                                   (rpn-calc--take n-optionals)
-                                 (make-list n-optionals nil)))
-                    (rest-args (prog1 rpn-calc--stack
-                                 (setq rpn-calc--stack nil))))
-               (setq rpn-calc--stack
-                     (list (apply obj (nconc args optionals rest-args))))))
-            (t                  ; other fn
-             (push (apply obj (nreverse (rpn-calc--take n-required))) rpn-calc--stack))))))
+            ((functionp obj)            ; function
+             (setq arglst        (rpn-calc--function-args obj)
+                   n-args        (length (car arglst))
+                   n-optionals   (length (cadr arglst))
+                   req-optionals (and rpn-calc-apply-optional-args
+                                      (or (not (eq rpn-calc-apply-optional-args 'guess))
+                                          (zerop n-args)))
+                   n-required    (+ n-args (if req-optionals n-optionals 0)))
+             (when (< (length rpn-calc--stack) n-required)
+               (error (format "too few arguments (required:%d)" n-required)))
+             (if (or (null (cddr arglst)) (not rpn-calc-apply-rest-args))
+                 (push (apply obj (nreverse (rpn-calc--take n-required))) rpn-calc--stack)
+               (setq rpn-calc--stack (nreverse rpn-calc--stack))
+               (let* ((args (rpn-calc--take n-args))
+                      (optionals (if req-optionals
+                                     (rpn-calc--take n-optionals)
+                                   (make-list n-optionals nil)))
+                      (rest-args (prog1 rpn-calc--stack
+                                   (setq rpn-calc--stack nil))))
+                 (setq rpn-calc--stack
+                       (list (apply obj (nconc args optionals rest-args)))))))
+            ((symbolp obj)              ; symbol
+             (if (fboundp obj)
+                 (rpn-calc--push (symbol-function obj))
+               (push (symbol-value obj) rpn-calc--stack)))
+            (t                          ; other expressions
+             (push (eval obj) rpn-calc--stack))))))
 
 (defun rpn-calc--maybe-commit-current-input ()
   (with-current-buffer rpn-calc--temp-buffer
@@ -335,19 +334,20 @@ active."
       (popup-draw rpn-calc--popup))))
 
 (defun rpn-calc--annotation (item &optional raw)
-  (cond ((integerp item)                ; integer
+  (cond ((and raw (symbolp item))       ; unevaluated symbol
+         (or (and (fboundp item) (rpn-calc--annotation (symbol-function item)))
+             (and (boundp item) (not (eq item (symbol-value item)))
+                  (format " (%s)" (prin1-to-string (symbol-value item))))))
+        ((and raw (consp item) (memq (car item) '(quote function))) ; quoted expression
+         (when (functionp (cadr item))
+           (rpn-calc--annotation (cadr item) raw)))
+        ((integerp item)                ; integer
          (format " (HEX:#x%s, BIN:#b%s)"
                  (rpn-calc--int-to-hex item)
                  (rpn-calc--int-to-bin item)))
         ((floatp item)                  ; float
          (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
-        ((and raw (symbolp item) (not (null item))) ; variable
-         (when (boundp item)
-           (format " (%s)" (prin1-to-string (symbol-value item)))))
-        ((if (not raw)                  ; function
-             (functionp item)
-           (and (consp item) (memq (car item) '(quote function))
-                (functionp (setq item (cadr item)))))
+        ((functionp item)               ; function
          (let ((arglst (rpn-calc--function-args item))
                lst)
            (when (and (cddr arglst) rpn-calc-apply-rest-args) ; rest-args
