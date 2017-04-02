@@ -111,11 +111,11 @@ active."
             (cl-case (logand int 15)
               ((0) ?0) ((1) ?1) ((2) ?2) ((3) ?3)
               ((4) ?4) ((5) ?5) ((6) ?6) ((7) ?7)
-              ((8) ?8) ((9) ?9) ((10) ?a) ((11) ?b)
-              ((12) ?c) ((13) ?d) ((14) ?e) ((15) ?f)))
+              ((8) ?8) ((9) ?9) ((10) ?A) ((11) ?B)
+              ((12) ?C) ((13) ?D) ((14) ?E) ((15) ?F)))
       (setq int (ash int -4)))
-    (cond ((string-match "^f*fff\\(f\\|[^f].*\\)$" str)
-           (concat "..f" (match-string 1 str)))
+    (cond ((string-match "^F*FFF\\(F\\|[^F].*\\)$" str)
+           (concat "..F" (match-string 1 str)))
           ((string-match "^0*\\(0\\|[^0].*\\)$" str)
            (match-string 1 str))
           (t
@@ -336,7 +336,7 @@ active."
 
 (defun rpn-calc--annotation (item &optional raw)
   (cond ((integerp item)                ; integer
-         (format " (HEX:%s, BIN:%s)"
+         (format " (HEX:#x%s, BIN:#b%s)"
                  (rpn-calc--int-to-hex item)
                  (rpn-calc--int-to-bin item)))
         ((floatp item)                  ; float
