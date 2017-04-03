@@ -18,16 +18,17 @@
 
 ;; Author: zk_phi
 ;; URL: http://hins11.yu-yake.com/
-;; Version: 1.0.0
+;; Version: 1.1.0
 ;; Package-Requires: ((popup "0.4"))
 
 ;;; Commentary:
 
-;; Try: "M-x rpn-calc[RET] 1[SPC]2+3/sin'number-to-string[SPC]"
+;; Try: "M-x rpn-calc[RET] 1[SPC]2+3/sinnumber-to-string[SPC]"
 
 ;;; Change Log:
 
 ;; 1.0.0 first release
+;; 1.1.0 changed quote behavior for symbols
 
 ;;; Code:
 
