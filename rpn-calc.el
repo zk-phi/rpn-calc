@@ -18,7 +18,7 @@
 
 ;; Author: zk_phi
 ;; URL: http://hins11.yu-yake.com/
-;; Version: 1.1.0
+;; Version: 1.1.1
 ;; Package-Requires: ((popup "0.4"))
 
 ;;; Commentary:
@@ -29,6 +29,7 @@
 
 ;; 1.0.0 first release
 ;; 1.1.0 changed quote behavior for symbols
+;; 1.1.1 show ASCII char in the tooltip
 
 ;;; Code:
 
