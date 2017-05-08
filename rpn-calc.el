@@ -126,6 +126,17 @@ active."
           (t
            str))))
 
+(defun rpn-calc--int-to-char (int)
+  (cl-case int
+    ((0) "NUL")  ((1) "SOH")  ((2) "STX")  ((3) "ETX")  ((4) "EOT")
+    ((5) "ENQ")  ((6) "ACK")  ((7) "BEL")  ((8) "BS")   ((9) "HT")
+    ((10) "LF")  ((11) "VT")  ((12) "FF")  ((13) "CR")  ((14) "SO")
+    ((15) "SI")  ((16) "DLE") ((17) "DC1") ((18) "DC2") ((19) "DC3")
+    ((20) "DC4") ((21) "NAK") ((22) "SYN") ((23) "ETB") ((24) "CAN")
+    ((25) "EM")  ((26) "SUB") ((27) "ESC") ((28) "FS")  ((29) "GS")
+    ((30) "RS")  ((31) "US")  ((32) "SPC") ((127) "DEL")
+    (t (if (< int 127) (char-to-string int) "N/A"))))
+
 (defun rpn-calc--float-to-ieee754 (float)
   ;; based on ieee-754.el
   (let (IEEE-sign IEEE-exp IEEE-mantissa exp)
@@ -164,8 +175,6 @@ active."
     (cons (nreverse args) (cons (nreverse optional-args) (cadr lst)))))
 
 ;; + core
-
-;; *TODO* display ASCII char ?
 
 (defvar rpn-calc--saved-minor-modes nil)
 (defvar rpn-calc--stack-prepend nil)
@@ -347,9 +356,10 @@ active."
          (when (functionp (cadr item))
            (rpn-calc--annotation (cadr item) raw)))
         ((integerp item)                ; integer
-         (format " (HEX:#x%s, BIN:#b%s)"
+         (format " (HEX:#x%s, BIN:#b%s, ASCII:%s)"
                  (rpn-calc--int-to-hex item)
-                 (rpn-calc--int-to-bin item)))
+                 (rpn-calc--int-to-bin item)
+                 (rpn-calc--int-to-char item)))
         ((floatp item)                  ; float
          (format " (IEEE754:%s)" (rpn-calc--float-to-ieee754 item)))
         ((functionp item)               ; function
