@@ -136,7 +136,7 @@ active."
     ((20) "[DC4]") ((21) "[NAK]") ((22) "[SYN]") ((23) "[ETB]") ((24) "[CAN]")
     ((25) "[EM]")  ((26) "[SUB]") ((27) "[ESC]") ((28) "[FS]")  ((29) "[GS]")
     ((30) "[RS]")  ((31) "[US]")  ((32) "[SPC]") ((127) "[DEL]")
-    (t (if (< int 127) (char-to-string int) "[N/A]"))))
+    (t (if (and (> int 32) (< int 127)) (char-to-string int) "[N/A]"))))
 
 (defun rpn-calc--float-to-ieee754 (float)
   ;; based on ieee-754.el
