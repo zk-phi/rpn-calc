@@ -53,7 +53,7 @@
     ("sin" 1 . sin)
     ("cos" 1 . cos)
     ("tan" 1 . tan)
-    ("lg" 1 . log10)
+    ("lg" 1 . (lambda (x) (log x 10)))
     ("ln" 1 . log)
     ("log" 2 . (lambda (base value) (log value base)))
     ;; bitwise
