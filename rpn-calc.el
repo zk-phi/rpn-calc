@@ -308,7 +308,7 @@ active."
                      (setcar rpn-calc--stack (cadr rpn-calc--stack))
                      (setcar (cdr rpn-calc--stack) tmp))
                  (error "too few arguments (required:2)")))
-              ((looking-back "\\(^\\|[^\\]\\)[])}\"\s\t\n]") ; complete input
+              ((looking-back "\\(^\\|[^\\]\\)[])}\"\s\t\n]" (point-min)) ; complete input
                (erase-buffer)
                (rpn-calc--push (or (when (symbolp obj)
                                      (assoc (symbol-name obj) rpn-calc-operator-table))
