@@ -255,7 +255,7 @@ active."
 
 (defun rpn-calc--push (obj)
   (with-current-buffer rpn-calc--buffer
-    (let (fn arglst n-args n-optionals n-required req-optionals)
+    (let (arglst n-args n-optionals n-required req-optionals)
       (cond ((and (consp obj) (integerp (car obj)) (functionp (cdr obj))) ; RPN operator
              (setq n-args (car obj))
              (when (< (length rpn-calc--stack) n-args)
@@ -379,8 +379,8 @@ active."
 
 ;; + commands
 
-(defun rpn-calc-self-insert (n)
-  (interactive "P")
+(defun rpn-calc-self-insert ()
+  (interactive)
   (with-current-buffer rpn-calc--temp-buffer
     (goto-char (point-max))
     (call-interactively 'self-insert-command)))
