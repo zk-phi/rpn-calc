@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;;; rpn-calc.el --- quick RPN calculator for hackers
 
 ;; Copyright (C) 2015 zk_phi
